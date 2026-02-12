@@ -2,7 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const Experience = require("./Experience");
 const cors = require("cors");
-require("dotenc").config();
+const dotenv = require("dotenv");
 
 const app = express();
 app.use(express.json());
