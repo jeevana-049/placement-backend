@@ -17,8 +17,38 @@ const bcrypt = require("bcryptjs");
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  role: { type: String, default: "student" },
 });
 const User = mongoose.model("User", userSchema);
+
+// 1. Define Job Schema
+const JobSchema = new mongoose.Schema({
+  title: String,
+  company: String,
+  type: String, // e.g., Internship or Full-time
+  link: String,
+  deadline: String,
+});
+const Job = mongoose.model("Job", JobSchema);
+
+// 2. Route to GET jobs (for everyone)
+app.get("/get-jobs", async (req, res) => {
+  const jobs = await Job.find().sort({ _id: -1 });
+  res.send(jobs);
+});
+
+// 3. Route to POST jobs (Admin only logic check)
+app.post("/add-job", async (req, res) => {
+  const { title, company, type, link, deadline, role } = req.body;
+
+  if (role !== "admin") {
+    return res.status(403).send({ message: "Access Denied: Admins only" });
+  }
+
+  const newJob = new Job({ title, company, type, link, deadline });
+  await newJob.save();
+  res.send({ message: "Job posted successfully!" });
+});
 
 // Register Route
 app.post("/register", async (req, res) => {
@@ -34,15 +64,26 @@ app.post("/register", async (req, res) => {
 });
 
 // Login Route
+// server.js
+
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
-  const user = await User.findOne({ email });
-  if (!user) return res.status(400).send({ message: "User not found" }); // Sends 400 error
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).send({ message: "User not found" });
 
-  const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) return res.status(400).send({ message: "Invalid Password" }); // Sends 400 error
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).send({ message: "Invalid Password" });
 
-  res.send({ message: "Success", userEmail: user.email }); // Sends 200 success
+    // UPDATE THIS LINE HERE:
+    res.send({
+      message: "Success",
+      userEmail: user.email,
+      role: user.role || "student", // Default to student if role isn't set
+    });
+  } catch (err) {
+    res.status(500).send({ message: "Server error" });
+  }
 });
 
 // 2. USE THE STRING DIRECTLY if process.env isn't working on your laptop
